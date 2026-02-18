@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Swastik Photo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #D90429;
+            --secondary-color: #1a1a1a;
+            --light-color: #f4f4f4;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #b90322;
+        }
+
+        #dashboard {
+            display: none;
+        }
+
+        #login-section {
+            display: block;
+        }
+
+        .message {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .preview-list {
+            margin-top: 2rem;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Login Section -->
+        <div id="login-section">
+            <h2>Admin Login</h2>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter Admin Password">
+            </div>
+            <button onclick="login()">Login</button>
+            <p id="login-msg" class="message"></p>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard">
+            <div class="dashboard-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2>Admin Dashboard</h2>
+                <button onclick="logout()" style="width: auto; background: #333; padding: 0.5rem 1rem;">Logout</button>
+            </div>
+
+            <div class="nav-buttons" style="margin-bottom: 2rem; display: flex; gap: 1rem;">
+                <button onclick="showGallery()" id="btn-gallery" style="background: var(--secondary-color);">Manage
+                    Gallery</button>
+                <button onclick="showUpload()" id="btn-upload" style="background: #ddd; color: #333;">Add New
+                    Photo</button>
+            </div>
+
+            <!-- Gallery View -->
+            <div id="gallery-view">
+                <h3>Current Portfolio</h3>
+                <div id="gallery-list" class="preview-list"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem;">
+                    <!-- Images will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Upload View -->
+            <div id="upload-view" style="display: none;">
+                <h3>Upload New Photo</h3>
+                <form id="upload-form">
+                    <div class="input-group">
+                        <label>Category</label>
+                        <select id="category">
+                            <option value="wedding">Wedding</option>
+                            <option value="event">Event</option>
+                            <option value="portrait">Portrait</option>
+                            <option value="hero">Hero Slider (Home Top)</option>
+                            <option value="about">About Profile Pic</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Select Image</label>
+                        <input type="file" id="image-file" accept="image/*" required>
+                    </div>
+                    <button type="submit">Upload Image</button>
+                </form>
+                <p id="upload-msg" class="message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check for existing session
+        if (localStorage.getItem('authToken') === 'dummy-token-123') {
+            initDashboard();
+        }
+
+        function login() {
+            const password = document.getElementById('password').value;
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        localStorage.setItem('authToken', data.token);
+                        initDashboard();
+                    } else {
+                        document.getElementById('login-msg').className = 'message error';
+                        document.getElementById('login-msg').innerText = data.message;
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function initDashboard() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadGallery();
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            location.reload();
+        }
+
+        // --- Navigation ---
+        function showGallery() {
+            document.getElementById('gallery-view').style.display = 'block';
+            document.getElementById('upload-view').style.display = 'none';
+
+            // Update Active Button Styles
+            document.getElementById('btn-gallery').style.background = 'var(--secondary-color)';
+            document.getElementById('btn-gallery').style.color = 'white';
+            document.getElementById('btn-upload').style.background = '#ddd';
+            document.getElementById('btn-upload').style.color = '#333';
+
+            loadGallery(); // Refresh list
+        }
+
+        function showUpload() {
+            document.getElementById('gallery-view').style.display = 'none';
+            document.getElementById('upload-view').style.display = 'block';
+
+            document.getElementById('btn-gallery').style.background = '#ddd';
+            document.getElementById('btn-gallery').style.color = '#333';
+            document.getElementById('btn-upload').style.background = 'var(--primary-color)';
+            document.getElementById('btn-upload').style.color = 'white';
+
+            document.getElementById('upload-msg').innerText = ''; // Clear msgs
+        }
+
+        // --- Gallery Logic ---
+        function loadGallery() {
+            fetch('/api/portfolio')
+                .then(res => res.json())
+                .then(data => {
+                    const list = document.getElementById('gallery-list');
+                    list.innerHTML = '';
+
+                    if (data.length === 0) {
+                        list.innerHTML = '<p>No images found.</p>';
+                        return;
+                    }
+
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.style.border = '1px solid #ddd';
+                        div.style.padding = '0.5rem';
+                        div.style.borderRadius = '5px';
+                        div.style.textAlign = 'center';
+
+                        div.innerHTML = `
+                        <img src="${item.src}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 3px;">
+                        <p style="font-size: 0.8rem; margin: 0.5rem 0;">${item.category}</p>
+                        <button onclick="deleteImage('${item.src}')" style="background: #D90429; font-size: 0.8rem; padding: 0.3rem;">Delete</button>
+                    `;
+                        list.appendChild(div);
+                    });
+                });
+        }
+
+        function deleteImage(filePath) {
+            if (!confirm('Are you sure you want to delete this image?')) return;
+
+            fetch('/api/image', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filePath })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        loadGallery(); // Refresh list
+                    } else {
+                        alert('Failed to delete: ' + data.message);
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        // --- Upload Logic ---
+        document.getElementById('upload-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const fileField = document.getElementById('image-file');
+            const category = document.getElementById('category').value;
+
+            formData.append('category', category); // Append category FIRST
+            formData.append('image', fileField.files[0]);
+
+            const btn = this.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = 'Uploading...';
+            btn.disabled = true;
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const msg = document.getElementById('upload-msg');
+                    if (data.success) {
+                        msg.className = 'message success';
+                        msg.innerText = 'Upload Successful! Redirecting...';
+                        fileField.value = ''; // Reset file input
+
+                        setTimeout(() => {
+                            showGallery();
+                            msg.innerText = '';
+                        }, 1500);
+                    } else {
+                        msg.className = 'message error';
+                        msg.innerText = 'Upload Failed: ' + data.message;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById('upload-msg').innerText = 'Server Error';
+                })
+                .finally(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                });
+        });
+    </script>
+</body>
+
+</html>
